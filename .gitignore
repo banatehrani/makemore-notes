@@ -1,0 +1,16 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# outputs
+runs/
+outputs/
