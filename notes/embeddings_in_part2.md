@@ -86,15 +86,9 @@ then `C[X]` returns a matrix of shape $(N, d)$.
 In Part 2, each training example is a **context window** of length $B$
 and the target is the **next** character.
 
-Input:
-$$
-X_b \in \{0,\dots,V-1\}^{N \times B}
-$$
+Input: $X_b \in \{0,\dots,V-1\}^{N \times B}$
 
-Target:
-$$
-Y \in \{0,\dots,V-1\}^{N}
-$$
+Target: $Y \in \{0,\dots,V-1\}^{N}$
 
 Embedding lookup:
 
