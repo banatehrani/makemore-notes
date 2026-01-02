@@ -29,9 +29,8 @@ Notation used throughout this note:
 
 For a single example, the logits vector is:
 
-\[
-\mathbf{z} = (z_0, z_1, \dots, z_{C-1})
-\]
+
+$\mathbf{z} = (z_0, z_1, \dots, z_{C-1})$
 
 ---
 
