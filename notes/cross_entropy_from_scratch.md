@@ -38,13 +38,11 @@ $\mathbf{z} = (z_0, z_1, \dots, z_{C-1})$
 
 Softmax converts logits into a probability distribution:
 
-\[
-p_j = \frac{e^{z_j}}{\sum_{k=0}^{C-1} e^{z_k}}
-\]
+$p_j = \frac{e^{z_j}}{\sum_{k=0}^{C-1} e^{z_k}}$
 
 Properties:
-- \(p_j \ge 0\)
-- \(\sum_j p_j = 1\)
+- $\(p_j \ge 0\)$
+- $\(\sum_j p_j = 1\)$
 
 Softmax answers the question:
 
@@ -56,12 +54,10 @@ Softmax answers the question:
 
 For training, we only care about the probability assigned to the **correct** class.
 
-If the true class index is `y`, the model assigns probability \(p_y\).
+If the true class index is `y`, the model assigns probability $\(p_y\)$.
 The per-example loss is defined as:
 
-\[
-\ell = -\log(p_y)
-\]
+$\ell = -\log(p_y)$
 
 Why use the logarithm?
 - It strongly penalizes confident wrong predictions.
@@ -70,9 +66,7 @@ Why use the logarithm?
 
 The dataset loss is the mean:
 
-\[
-\text{loss} = \frac{1}{N}\sum_{i=1}^{N} -\log(p_{y^{(i)}})
-\]
+$\text{loss} = \frac{1}{N}\sum_{i=1}^{N} -\log(p_{y^{(i)}})$
 
 This is the same objective used earlier in the count-based bigram model.
 
@@ -135,29 +129,21 @@ Because logits can grow large during training, **explicit softmax followed by lo
 
 ## Step 6 — The key algebraic identity (log-softmax)
 
-Starting from softmax for the correct class \(y\):
+Starting from softmax for the correct class $\(y\)$:
 
-\[
-p_y = \frac{e^{z_y}}{\sum_k e^{z_k}}
-\]
+$p_y = \frac{e^{z_y}}{\sum_k e^{z_k}}$
 
 Taking the logarithm:
 
-\[
-\log(p_y) = \log(e^{z_y}) - \log\left(\sum_k e^{z_k}\right)
-\]
+$\log(p_y) = \log(e^{z_y}) - \log\left(\sum_k e^{z_k}\right)$
 
-Since \(\log(e^{z_y}) = z_y\):
+Since $\(\log(e^{z_y}) = z_y\)$:
 
-\[
-\log(p_y) = z_y - \log\left(\sum_k e^{z_k}\right)
-\]
+$\log(p_y) = z_y - \log\left(\sum_k e^{z_k}\right)$
 
 So the per-example loss becomes:
 
-\[
-\ell = -z_y + \log\left(\sum_k e^{z_k}\right)
-\]
+$\ell = -z_y + \log\left(\sum_k e^{z_k}\right)$
 
 This formulation avoids explicitly computing probabilities.
 
@@ -167,41 +153,30 @@ This formulation avoids explicitly computing probabilities.
 
 The remaining challenge is computing:
 
-\[
-\log\left(\sum_k e^{z_k}\right)
-\]
+$\log\left(\sum_k e^{z_k}\right)$
 
 without overflow.
 
 Let:
 
-\[
-m = \max_k z_k
-\]
+$m = \max_k z_k$
 
 Define shifted logits:
 
-\[
-z'_k = z_k - m
-\]
+$z'_k = z_k - m$
 
 Then:
 
-\[
-\sum_k e^{z_k} = \sum_k e^{z'_k + m} = e^m \sum_k e^{z'_k}
-\]
+$\sum_k e^{z_k} = \sum_k e^{z'_k + m} = e^m \sum_k e^{z'_k}$
 
 Taking the logarithm:
 
-\[
-\log\left(\sum_k e^{z_k}\right)
-= m + \log\left(\sum_k e^{z'_k}\right)
-\]
+$\log\left(\sum_k e^{z_k}\right) = m + \log\left(\sum_k e^{z'_k}\right)$
 
 Why this works:
 - At least one shifted logit equals 0
-- All others are \(\le 0\)
-- \(e^{z'_k} \in (0, 1]\)
+- All others are $\(\le 0\)$
+- $\(e^{z'_k} \in (0, 1]\)$
 - No overflow occurs
 
 Softmax is invariant to constant shifts, so subtracting \(m\) does **not** change the resulting probabilities.
