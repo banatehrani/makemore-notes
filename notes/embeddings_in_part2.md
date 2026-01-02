@@ -99,14 +99,8 @@ This is a vectorized gather operation.
 Embedding lookup is equivalent to applying a linear layer to a one-hot vector.
 
 For a token $x$:
-1. One-hot encode:
-   $$
-   \mathbf{e}_x \in \{0,1\}^V
-   $$
-2. Apply a linear transformation:
-   $$
-   \mathbf{e}_x^\top C = C[x]
-   $$
+1. One-hot encode: $\mathbf{e}_x \in \{0,1\}^V$
+2. Apply a linear transformation: $\mathbf{e}_x^\top C = C[x]$
 
 Thus, embedding lookup is equivalent to a linear layer with no bias applied to a one-hot input.
 
