@@ -1,12 +1,10 @@
 # Cross-Entropy (from scratch)
 
-This note explains what `torch.nn.functional.cross_entropy` computes, why it is used in language modeling (and multi-class classification in general), and how to reproduce it **from first principles**. We begin with the naive mathematical definition, show why it is numerically unsafe in practice, and then derive the **stable formulation** used by PyTorch and other deep-learning libraries.
-
-The setting is character-level language modeling (as in *makemore*), but everything here applies to any multi-class classification problem.
+This note explains what `torch.nn.functional.cross_entropy` computes and how to reproduce it **from first principles**. We begin with the naive mathematical definition, show why it is numerically unsafe in practice, and then derive the **stable formulation** used by PyTorch and other deep-learning libraries.
 
 ---
 
-## Step 1 — Logits vs probabilities
+## 1 — Logits vs probabilities
 
 Neural networks usually output **logits**, not probabilities.
 
@@ -34,7 +32,7 @@ $\mathbf{z} = (z_0, z_1, \dots, z_{C-1})$
 
 ---
 
-## Step 2 — Softmax: converting logits to probabilities
+## 2 — Softmax: converting logits to probabilities
 
 Softmax converts logits into a probability distribution:
 
@@ -44,13 +42,11 @@ Properties:
 - $\(p_j \ge 0\)$
 - $\(\sum_j p_j = 1\)$
 
-Softmax answers the question:
-
-> “Given these scores, how likely is each class?”
+Softmax answers the question: Given these scores, how likely is each class?
 
 ---
 
-## Step 3 — Negative log-likelihood (NLL)
+## 3 — Negative log-likelihood (NLL)
 
 For training, we only care about the probability assigned to the **correct** class.
 
@@ -66,13 +62,11 @@ Why use the logarithm?
 
 The dataset loss is the mean:
 
-$\text{loss} = \frac{1}{N}\sum_{i=1}^{N} -\log(p_{y^{(i)}})$
-
-This is the same objective used earlier in the count-based bigram model.
+$\text{loss} = \frac{1}{N}\sum_{i=1}^{N} [-\log(p_{y^{(i)}})]$
 
 ---
 
-## Step 4 — Naive cross-entropy (explicit but fragile)
+## 4 — Naive cross-entropy (explicit but fragile)
 
 The following is a **direct translation of the mathematics** using only `exp`, `sum`, and `log`.
 
@@ -101,7 +95,7 @@ So why doesn’t PyTorch implement cross-entropy exactly like the naive code abo
 
 ---
 
-## Step 5 — Why PyTorch does NOT compute it this way
+## 5 — Why PyTorch does NOT compute it this way
 
 The naive implementation explicitly computes exponentials of logits.
 
@@ -127,7 +121,7 @@ Because logits can grow large during training, **explicit softmax followed by lo
 
 ---
 
-## Step 6 — The key algebraic identity (log-softmax)
+## 6 — The key algebraic identity (log-softmax)
 
 Starting from softmax for the correct class $\(y\)$:
 
@@ -149,7 +143,7 @@ This formulation avoids explicitly computing probabilities.
 
 ---
 
-## Step 7 — Stability trick: subtracting the maximum logit
+## 7 — Stability trick: subtracting the maximum logit
 
 The remaining challenge is computing:
 
@@ -183,7 +177,7 @@ Softmax is invariant to constant shifts, so subtracting \(m\) does **not** chang
 
 ---
 
-## Step 8 — Stable manual cross-entropy (no softmax, no logsumexp)
+## 8 — Stable manual cross-entropy (no softmax, no logsumexp)
 
 Below is a numerically stable implementation using only basic operations.
 
@@ -213,7 +207,7 @@ This computes the same objective as the naive version, but safely.
 
 ---
 
-## Step 9 — What `F.cross_entropy` does internally
+## 9 — What `F.cross_entropy` does internally
 
 Conceptually, PyTorch computes:
 
@@ -231,22 +225,12 @@ PyTorch fuses these steps for numerical stability, performance, and memory effic
 
 ---
 
-## Step 10 — Final takeaway
+## 10 — Final takeaway
 
-Cross-entropy answers a simple question:
-
-> **How surprised is the model, on average, by the correct answer?**
+Cross-entropy answers a simple question: How surprised is the model, on average, by the correct answer?
 
 A useful mental pipeline:
 
 ```text
 logits → stable normalization → log(prob correct) → negate → mean
 ```
-
-As models evolve from:
-- bigram models
-- to MLPs with embeddings
-- to deeper architectures
-
-the **loss function remains the same**.  
-Only the **model producing the logits** changes.
