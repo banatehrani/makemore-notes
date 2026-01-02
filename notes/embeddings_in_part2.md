@@ -1,208 +1,245 @@
-# Embeddings in Part 2 (MLP Context Model)
+# Embeddings in Part 2 (MLP Context Model) — with a full **context** example
 
-This note explains what embeddings are, why they are used in Part 2 of makemore, and what expressions like `C[X]` or `C[Xb]` mean mathematically and computationally.
+This note explains what embeddings are, why they are used in Makemore Part 2 (the MLP model), and what expressions like `C[X]` or `C[Xb]` mean **when the input is a context window** (e.g., 3 characters) and the output is the **next** character (Karpathy’s setup).
 
 ---
 
-## 1. What is an embedding?
+## 1) What is an embedding?
 
-An embedding is a learned mapping from a discrete symbol (such as a character index) to a continuous vector.
+An embedding is a learned mapping from a discrete symbol (character/token ID) to a continuous vector.
 
-For a vocabulary of size $V$ and embedding dimension $d$, the embedding matrix is:
+For vocabulary size $V$ and embedding dimension $d$:
 
 $$
 C \in \mathbb{R}^{V \times d}
 $$
 
-Each row of $C$ corresponds to one token.  
-For a token index $x \in \{0, \dots, V-1\}$, the embedding lookup is:
-
-$$
-\text{embedding}(x) = C[x]
-$$
+- Row `C[i]` is the embedding vector for token ID `i`.
 
 ---
 
-## 2. Why embeddings instead of one-hot vectors?
+## 2) Why embeddings instead of one-hot vectors?
 
-A one-hot encoding represents a token as a vector:
+A one-hot encoding represents a token as a vector $\mathbf{e}_x \in \{0,1\}^V$ with a single 1.
 
-$$
-\mathbf{x} \in \{0,1\}^V
-$$
+Limitations of one-hot:
+- Very high dimensional (size $V$)
+- No notion of similarity (all different tokens are equally “far”)
+- Inefficient compared to a dense lookup
 
-with exactly one non-zero entry.
-
-Limitations of one-hot encodings:
-- Very high dimensional
-- No notion of similarity between tokens
-- Inefficient for learning structure
-
-Embeddings solve this by mapping tokens into a dense, low-dimensional space where $d \ll V$.
+Embeddings solve this by learning a dense vector of size $d \ll V$.
 
 ---
 
-## 3. What does $\mathbb{R}^{V \times d}$ mean? (numerical example)
+## 3) What does $\mathbb{R}^{V \times d}$ mean? (numerical example)
 
-Consider a small vocabulary:
+Example vocabulary (5 tokens):
 
-Vocab = # Embeddings in Part 2 (MLP Context Model)
-
-This note explains what embeddings are, why they are used in Part 2 of makemore, and what expressions like `C[X]` or `C[Xb]` mean mathematically and computationally.
-
----
-
-## 1. What is an embedding?
-
-An embedding is a learned mapping from a discrete symbol (such as a character index) to a continuous vector.
-
-For a vocabulary of size $V$ and embedding dimension $d$, the embedding matrix is:
-
-$$
-C \in \mathbb{R}^{V \times d}
-$$
-
-Each row of $C$ corresponds to one token.  
-For a token index $x \in \{0, \dots, V-1\}$, the embedding lookup is:
-
-$$
-\text{embedding}(x) = C[x]
-$$
-
----
-
-## 2. Why embeddings instead of one-hot vectors?
-
-A one-hot encoding represents a token as a vector:
-
-$$
-\mathbf{x} \in \{0,1\}^V
-$$
-
-with exactly one non-zero entry.
-
-Limitations of one-hot encodings:
-- Very high dimensional
-- No notion of similarity between tokens
-- Inefficient for learning structure
-
-Embeddings solve this by mapping tokens into a dense, low-dimensional space where $d \ll V$.
-
----
-
-## 3. What does $\mathbb{R}^{V \times d}$ mean? (numerical example)
-
-Consider a small vocabulary:
-
-vocab = ['.', 'a', 'b', 'c', 'd']
+```text
+vocab = ['@', 'a', 'b', 'c', '.']
+ids:      0    1    2    3    4
+```
 
 Here:
-- Vocabulary size: $V = 5$
-- Embedding dimension: $d = 4$
+- $V = 5$
+- choose $d = 2$
 
-Then the embedding matrix has shape:
-
-$$
-C \in \mathbb{R}^{5 \times 4}
-$$
-
-A concrete numerical example of such a matrix is:
+A concrete embedding matrix $C \in \mathbb{R}^{5 \times 2}$:
 
 $$
 C =
 \begin{bmatrix}
- 0.10 & -0.30 &  0.25 &  0.90 \\
- 1.20 &  0.50 & -0.10 &  0.40 \\
--0.70 &  1.10 &  0.60 & -0.20 \\
- 0.30 & -0.80 &  1.50 &  0.70 \\
--1.10 &  0.20 & -0.40 &  0.05
+ 0.10 & -0.20 \\
+ 0.00 &  0.30 \\
+-0.40 &  0.20 \\
+ 0.50 & -0.10 \\
+-0.20 &  0.40
 \end{bmatrix}
 $$
 
-Each row is the embedding vector for one token.
+---
+
+## 4) What does `C[x]` mean numerically? (single token)
+
+If $x = 3$ (token `'c'`), then:
+
+$$
+C[3] = [0.50, -0.10]
+$$
 
 ---
 
-## 4. What does `C[x]` mean numerically?
+## 5) Batched lookup: `C[X]`
 
-If the input token index is: x = 3 # token 'c'
-
-Then the embedding lookup selects row 3:
+If you have a batch of token IDs:
 
 $$
-C[3] = [0.30, -0.80, 1.50, 0.70]
+X \in \{0,\dots,V-1\}^{N}
 $$
 
-The discrete symbol `'c'` is now represented as a 4-dimensional real vector.
+then `C[X]` returns a matrix of shape $(N, d)$.
 
 ---
 
-## 5. Batched lookup: `C[X]`
+## 6) Context window lookup (the key idea): `C[Xb]` with $B=3$
 
-If we have a batch of token indices: 
-then the embedding lookup selects row 3:
+In Part 2, each training example is a **context window** of length $B$
+and the target is the **next** character.
 
+Input:
 $$
-C[3] = [0.30, -0.80, 1.50, 0.70]
+X_b \in \{0,\dots,V-1\}^{N \times B}
 $$
 
-The discrete symbol `'c'` is now represented as a 4-dimensional real vector.
+Target:
+$$
+Y \in \{0,\dots,V-1\}^{N}
+$$
+
+Embedding lookup:
+
+- `C`: $(V, d)$
+- `X_b`: $(N, B)$
+- `E = C[X_b]`: $(N, B, d)$
 
 ---
 
-## 5. Batched lookup: `C[X]`
+## 7) Full numerical context example ($B=3$ → predict next char)
 
-If we have a batch of token indices: X = [0, 4, 1]
+Vocabulary and embedding table are the same as above.
 
+### Step A — Context batch
 
-then:
+```text
+Xb =
+[[0, 1, 2],     # ['@', 'a', 'b']
+ [3, 4, 1]]     # ['c', '.', 'a']
+```
+
+Targets:
+
+```text
+Y = [3, 2]      # ['c', 'b']
+```
+
+### Step B — Embedding lookup
 
 $$
-C[X] =
+E = C[X_b] =
 \begin{bmatrix}
- 0.10 & -0.30 &  0.25 &  0.90 \\
--1.10 &  0.20 & -0.40 &  0.05 \\
- 1.20 &  0.50 & -0.10 &  0.40
+\begin{bmatrix}
+ C[0] \\
+ C[1] \\
+ C[2]
+\end{bmatrix}
+\\
+\begin{bmatrix}
+ C[3] \\
+ C[4] \\
+ C[1]
+\end{bmatrix}
+\end{bmatrix}
+$$
+
+Numerically:
+
+$$
+E =
+\begin{bmatrix}
+\begin{bmatrix}
+ 0.10 & -0.20 \\
+ 0.00 &  0.30 \\
+-0.40 &  0.20
+\end{bmatrix}
+\\
+\begin{bmatrix}
+ 0.50 & -0.10 \\
+-0.20 &  0.40 \\
+ 0.00 &  0.30
+\end{bmatrix}
+\end{bmatrix}
+$$
+
+Shape: $(N, B, d) = (2, 3, 2)$.
+
+### Step C — Concatenation
+
+Flatten the context embeddings:
+
+$$
+x = \text{reshape}(E) \in \mathbb{R}^{N \times (B d)}
+$$
+
+Here $B d = 6$:
+
+$$
+x =
+\begin{bmatrix}
+ 0.10 & -0.20 & 0.00 & 0.30 & -0.40 & 0.20 \\
+ 0.50 & -0.10 & -0.20 & 0.40 & 0.00 & 0.30
 \end{bmatrix}
 $$
 
 ---
 
-## 6. Context window lookup: `C[Xb]`
+## 8) MLP to logits for the next character
 
-Suppose we use a context length $T = 3$ and batch size $B = 2$:
-
-Xb = [[0, 1, 2],
-[3, 4, 1]]
-
-
-Then:
+Hidden layer:
 
 $$
-C[Xb] \in \mathbb{R}^{2 \times 3 \times 4}
+h = \tanh(x W_1 + b_1)
 $$
 
+Output logits:
+
+$$
+\text{logits} = h W_2 + b_2
+$$
+
+Where:
+
+- $W_1 \in \mathbb{R}^{(B d) \times H}$
+- $W_2 \in \mathbb{R}^{H \times V}$
+
+Logits shape:
+
+$$
+\text{logits} \in \mathbb{R}^{N \times V}
+$$
+
+Softmax converts logits to probabilities, and cross-entropy compares them with $Y$.
+
 ---
 
-## 7. Mathematical interpretation of embedding lookup
+## 9) Why embedding lookup equals one-hot + linear layer
 
-Embedding lookup is equivalent to applying a linear layer to a one-hot vector.
+For a single token $x$:
 
-For a token $x$:
-1. One-hot encode: $\mathbf{e}_x \in \{0,1\}^V$
-2. Apply a linear transformation: $\mathbf{e}_x^\top C = C[x]$
+- One-hot vector $\mathbf{e}_x \in \{0,1\}^V$
+- Linear embedding:
+
+$$
+\mathbf{e}_x^T C = C[x]
+$$
+
+For a whole context:
+
+$$
+O \in \{0,1\}^{N \times B \times V}
+$$
+
+$$
+E = O C \in \mathbb{R}^{N \times B \times d}
+$$
+
+This is exactly what `C[Xb]` computes efficiently.
 
 ---
 
-## 8. Embeddings are learnable parameters
+## 10) Final mental picture
 
-The embedding matrix $C$:
-- is initialized randomly
-- participates in backpropagation
-- is updated via gradient descent
-
----
-
-## 9. Mental model to remember
-
-An embedding layer is a linear layer applied to a one-hot vector, implemented efficiently via indexing.
+- `Xb`: context **IDs**
+- `C[Xb]`: embeddings for each context position
+- concatenate → one vector per example
+- MLP → logits over vocabulary
+- cross-entropy trains next-character prediction
