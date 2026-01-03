@@ -1,4 +1,4 @@
-# Embeddings (Makemore Part 2) — simple and intuitive
+# Embeddings (Makemore Part 2)
 
 This note explains **what embeddings are** at a conceptual level and then shows **two concrete examples**:
 1) embedding lookup (the Makemore way), and  
@@ -15,8 +15,7 @@ In language models, characters (or words) are **discrete symbols**:
 
 Neural networks, however, work with **numbers**, not symbols.
 
-An **embedding** is simply:
-> a learned table that maps each symbol ID to a small vector of numbers.
+An **embedding** is simply a learned table that maps each symbol ID to a small vector of numbers.
 
 Think of it as a **lookup table**:
 - input: an integer ID (e.g. `2`)
@@ -27,7 +26,7 @@ Why this is useful:
 - Learns similarity (similar characters can get similar vectors)
 - Fast and efficient
 
-Nothing magical is happening — we are just **replacing IDs with vectors** before feeding them to a neural network.
+Nothing magical is happening; we are just **replacing IDs with vectors** before feeding them to a neural network.
 
 ---
 
@@ -200,4 +199,4 @@ x   = emb.view(-1)                  # shape: (6,)
   - faster
   - more memory efficient
 
-> Embedding lookup = one-hot encoding + linear layer (done efficiently).
+Embedding lookup = one-hot encoding + linear layer (done efficiently).
