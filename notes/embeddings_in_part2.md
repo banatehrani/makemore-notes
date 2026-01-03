@@ -1,239 +1,203 @@
-# Embeddings in Part 2 (MLP Context Model) — with a full **context** example
+# Embeddings (Makemore Part 2) — simple and intuitive
 
-This note explains what embeddings are, why they are used in Makemore Part 2 (the MLP model), and what expressions like `C[X]` or `C[Xb]` mean **when the input is a context window** (e.g., 3 characters) and the output is the **next** character (Karpathy’s setup).
+This note explains **what embeddings are** at a conceptual level and then shows **two concrete examples**:
+1) embedding lookup (the Makemore way), and  
+2) one-hot encoding + linear layer, showing they are **equivalent**.
 
----
-
-## 1) What is an embedding?
-
-An embedding is a learned mapping from a discrete symbol (character/token ID) to a continuous vector.
-
-For vocabulary size $V$ and embedding dimension $d$:
-
-$$
-C \in \mathbb{R}^{V \times d}
-$$
-
-- Row `C[i]` is the embedding vector for token ID `i`.
+The goal is clarity, not heavy math.
 
 ---
 
-## 2) Why embeddings instead of one-hot vectors?
+## 1) What are embeddings? (conceptual explanation)
 
-A one-hot encoding represents a token as a vector $\mathbf{e}_x \in \{0,1\}^V$ with a single 1.
+In language models, characters (or words) are **discrete symbols**:
+- `'a'`, `'b'`, `'c'`, `'.'`, etc.
 
-Limitations of one-hot:
-- Very high dimensional (size $V$)
-- No notion of similarity (all different tokens are equally “far”)
-- Inefficient compared to a dense lookup
+Neural networks, however, work with **numbers**, not symbols.
 
-Embeddings solve this by learning a dense vector of size $d \ll V$.
+An **embedding** is simply:
+> a learned table that maps each symbol ID to a small vector of numbers.
+
+Think of it as a **lookup table**:
+- input: an integer ID (e.g. `2`)
+- output: a vector (e.g. `[-0.4, 0.2]`)
+
+Why this is useful:
+- Much smaller than one-hot vectors
+- Learns similarity (similar characters can get similar vectors)
+- Fast and efficient
+
+Nothing magical is happening — we are just **replacing IDs with vectors** before feeding them to a neural network.
 
 ---
 
-## 3) What does $\mathbb{R}^{V \times d}$ mean? (numerical example)
+## 2) Example 1 — Embedding lookup (Makemore style)
 
-Example vocabulary (5 tokens):
+### Vocabulary
 
 ```text
 vocab = ['@', 'a', 'b', 'c', '.']
 ids:      0    1    2    3    4
 ```
 
-Here:
-- $V = 5$
-- choose $d = 2$
+### Embedding table
 
-A concrete embedding matrix $C \in \mathbb{R}^{5 \times 2}$:
+Suppose we choose embedding dimension `d = 2`:
 
-$$
+```text
 C =
-\begin{bmatrix}
- 0.10 & -0.20 \\
- 0.00 &  0.30 \\
--0.40 &  0.20 \\
- 0.50 & -0.10 \\
--0.20 &  0.40
-\end{bmatrix}
-$$
+[
+ [ 0.10, -0.20 ],   # '@'
+ [ 0.00,  0.30 ],   # 'a'
+ [-0.40,  0.20 ],   # 'b'
+ [ 0.50, -0.10 ],   # 'c'
+ [-0.20,  0.40 ]    # '.'
+]
+```
 
----
+Each row is the vector representation of one character.
 
-## 4) What does `C[x]` mean numerically? (single token)
+### Single-character lookup
 
-If $x = 3$ (token `'c'`), then:
+If the input character is `'b'` (ID = 2):
 
-$$
-C[3] = [0.50, -0.10]
-$$
+```text
+C[2] = [-0.40, 0.20]
+```
 
----
+That’s the embedding.
 
-## 5) Batched lookup: `C[X]`
+### Context example (like Makemore)
 
-If you have a batch of token IDs:
+Suppose block size `B = 3` and the context is:
 
-$$
-X \in \{0,\dots,V-1\}^{N}
-$$
-
-then `C[X]` returns a matrix of shape $(N, d)$.
-
----
-
-## 6) Context window lookup (the key idea): `C[Xb]` with $B=3$
-
-In Part 2, each training example is a **context window** of length $B$
-and the target is the **next** character.
-
-Input: $X_b \in \{0,\dots,V-1\}^{N \times B}$
-
-Target: $Y \in \{0,\dots,V-1\}^{N}$
+```text
+['@', 'a', 'b'] → IDs [0, 1, 2]
+```
 
 Embedding lookup:
 
-- `C`: $(V, d)$
-- `X_b`: $(N, B)$
-- `E = C[X_b]`: $(N, B, d)$
-
----
-
-## 7) Full numerical context example ($B=3$ → predict next char)
-
-Vocabulary and embedding table are the same as above.
-
-### Step A — Context batch
-
 ```text
-Xb =
-[[0, 1, 2],     # ['@', 'a', 'b']
- [3, 4, 1]]     # ['c', '.', 'a']
+C[[0, 1, 2]] =
+[
+ [ 0.10, -0.20 ],   # '@'
+ [ 0.00,  0.30 ],   # 'a'
+ [-0.40,  0.20 ]    # 'b'
+]
 ```
 
-Targets:
+Then Makemore **concatenates** these vectors:
 
 ```text
-Y = [3, 2]      # ['c', 'b']
+[ 0.10, -0.20, 0.00, 0.30, -0.40, 0.20 ]
 ```
 
-### Step B — Embedding lookup
+This single vector is what goes into the MLP to predict the **next** character.
 
-$$
-E = C[X_b] =
-\begin{bmatrix}
-\begin{bmatrix}
- C[0] \\
- C[1] \\
- C[2]
-\end{bmatrix}
-\\
-\begin{bmatrix}
- C[3] \\
- C[4] \\
- C[1]
-\end{bmatrix}
-\end{bmatrix}
-$$
+### PyTorch version
 
-Numerically:
+```python
+import torch
 
-$$
-E =
-\begin{bmatrix}
-\begin{bmatrix}
- 0.10 & -0.20 \\
- 0.00 &  0.30 \\
--0.40 &  0.20
-\end{bmatrix}
-\\
-\begin{bmatrix}
- 0.50 & -0.10 \\
--0.20 &  0.40 \\
- 0.00 &  0.30
-\end{bmatrix}
-\end{bmatrix}
-$$
+C = torch.tensor([
+    [ 0.10, -0.20],
+    [ 0.00,  0.30],
+    [-0.40,  0.20],
+    [ 0.50, -0.10],
+    [-0.20,  0.40]
+])
 
-Shape: $(N, B, d) = (2, 3, 2)$.
+Xb = torch.tensor([0, 1, 2])   # ['@', 'a', 'b']
 
-### Step C — Concatenation
-
-Flatten the context embeddings:
-
-$$
-x = \text{reshape}(E) \in \mathbb{R}^{N \times (B d)}
-$$
-
-Here $B d = 6$:
-
-$$
-x =
-\begin{bmatrix}
- 0.10 & -0.20 & 0.00 & 0.30 & -0.40 & 0.20 \\
- 0.50 & -0.10 & -0.20 & 0.40 & 0.00 & 0.30
-\end{bmatrix}
-$$
+emb = C[Xb]        # shape: (3, 2)
+x   = emb.view(-1) # shape: (6,)
+```
 
 ---
 
-## 8) MLP to logits for the next character
+## 3) Example 2 — One-hot encoding (equivalent idea)
 
-Hidden layer:
+Now let’s do the **same thing** using one-hot vectors.
 
-$$
-h = \tanh(x W_1 + b_1)
-$$
+### One-hot vectors
 
-Output logits:
+Vocabulary size = 5.
 
-$$
-\text{logits} = h W_2 + b_2
-$$
+```text
+'@' → [1, 0, 0, 0, 0]
+'a' → [0, 1, 0, 0, 0]
+'b' → [0, 0, 1, 0, 0]
+'c' → [0, 0, 0, 1, 0]
+'.' → [0, 0, 0, 0, 1]
+```
 
-Where:
+### Linear layer weights
 
-- $W_1 \in \mathbb{R}^{(B d) \times H}$
-- $W_2 \in \mathbb{R}^{H \times V}$
+Use the **same numbers** as the embedding table:
 
-Logits shape:
+```text
+W =
+[
+ [ 0.10, -0.20 ],
+ [ 0.00,  0.30 ],
+ [-0.40,  0.20 ],
+ [ 0.50, -0.10 ],
+ [-0.20,  0.40 ]
+]
+```
 
-$$
-\text{logits} \in \mathbb{R}^{N \times V}
-$$
+### Multiply one-hot by `W`
 
-Softmax converts logits to probabilities, and cross-entropy compares them with $Y$.
+For `'b'` (ID = 2):
+
+```text
+[0, 0, 1, 0, 0] @ W = [-0.40, 0.20]
+```
+
+This is **exactly the same** vector as `C[2]`.
+
+### Context example
+
+Context `['@', 'a', 'b']`:
+
+```text
+one-hot('@') @ W → [ 0.10, -0.20 ]
+one-hot('a') @ W → [ 0.00,  0.30 ]
+one-hot('b') @ W → [-0.40,  0.20 ]
+```
+
+Concatenate → same input vector as before.
+
+### PyTorch version (one-hot)
+
+```python
+import torch
+import torch.nn.functional as F
+
+W = torch.tensor([
+    [ 0.10, -0.20],
+    [ 0.00,  0.30],
+    [-0.40,  0.20],
+    [ 0.50, -0.10],
+    [-0.20,  0.40]
+])
+
+Xb = torch.tensor([0, 1, 2])        # IDs
+one_hot = F.one_hot(Xb, num_classes=5).float()
+
+emb = one_hot @ W                  # shape: (3, 2)
+x   = emb.view(-1)                  # shape: (6,)
+```
 
 ---
 
-## 9) Why embedding lookup equals one-hot + linear layer
+## 4) Key takeaway
 
-For a single token $x$:
+- **Embeddings are just learned lookup tables**
+- `C[x]` is mathematically the same as `one_hot(x) @ W`
+- We use embeddings because they are:
+  - simpler
+  - faster
+  - more memory efficient
 
-- One-hot vector $\mathbf{e}_x \in \{0,1\}^V$
-- Linear embedding:
-
-$$
-\mathbf{e}_x^T C = C[x]
-$$
-
-For a whole context:
-
-$$
-O \in \{0,1\}^{N \times B \times V}
-$$
-
-$$
-E = O C \in \mathbb{R}^{N \times B \times d}
-$$
-
-This is exactly what `C[Xb]` computes efficiently.
-
----
-
-## 10) Final mental picture
-
-- `Xb`: context **IDs**
-- `C[Xb]`: embeddings for each context position
-- concatenate → one vector per example
-- MLP → logits over vocabulary
-- cross-entropy trains next-character prediction
+> Embedding lookup = one-hot encoding + linear layer (done efficiently).
